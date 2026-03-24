@@ -14,26 +14,34 @@ export default function HomeScreen() {
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const borderColor = useThemeColor({}, 'border');
-  
   const [recipes, setRecipes] = useState<any[]>([]);
+  const [featuredRecipe, setFeaturedRecipe] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Foundation');
   const { t } = useTranslation();
-
-  // Hardcoded VIP for Hall of Fame example
-  const hallOfFameUser = {
-    username: 'Chef Antoine',
-    dishName: 'Truffle Consommé',
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-8111142154ea?q=80&w=1932&auto=format&fit=crop',
-  };
-
   useEffect(() => {
     async function fetchRecipes() {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.from('recipes').select('*').order('id', { ascending: true });
-        if (error) throw error;
-        setRecipes(data || []);
+        // Fetch standard recipes
+        const { data: standardData, error: standardError } = await supabase.from('recipes').select('*').order('id', { ascending: true });
+        if (standardError) throw standardError;
+        setRecipes(standardData || []);
+
+        // Fetch featured recipe (latest one marked as featured)
+        const { data: featuredData, error: featuredError } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('is_featured', true)
+          .order('id', { ascending: false })
+          .limit(1)
+          .single();
+        
+        // We do not throw an error here because finding zero rows is an expected "No featured recipe" state.
+        if (!featuredError && featuredData) {
+          setFeaturedRecipe(featuredData);
+        }
+
       } catch (error) {
         console.error("Error", error);
       } finally {
@@ -54,19 +62,27 @@ export default function HomeScreen() {
 
       <ThemedView style={styles.contentContainer}>
         
-        {/* Hall of Fame Magazine Cover Section */}
+        {/* Dynamic Featured Signature Section */}
         <View style={styles.hofContainer}>
-          <ThemedText style={styles.hofLabel}>{t('hall_of_fame')}</ThemedText>
+          <ThemedText style={styles.hofLabel}>ESPRIT SIGNATURE</ThemedText>
           <View style={[styles.hofCard, { borderColor }]}>
-            <Image 
-              source={{ uri: hallOfFameUser.imageUrl }} 
-              style={styles.hofImage}
-              contentFit="cover" 
-            />
-            <View style={styles.hofOverlay}>
-              <ThemedText style={styles.hofDishLabel}>{hallOfFameUser.dishName}</ThemedText>
-              <ThemedText style={styles.hofUserLabel}>by {hallOfFameUser.username}</ThemedText>
-            </View>
+            {featuredRecipe ? (
+              <>
+                <Image 
+                  source={{ uri: featuredRecipe.image_url }} 
+                  style={styles.hofImage}
+                  contentFit="cover" 
+                />
+                <View style={styles.hofOverlay}>
+                  <ThemedText style={styles.hofDishLabel}>{featuredRecipe.title_en || featuredRecipe.title_ko}</ThemedText>
+                  <ThemedText style={styles.hofUserLabel}>{featuredRecipe.category || 'Featured Collection'}</ThemedText>
+                </View>
+              </>
+            ) : (
+              <View style={[styles.hofImage, { backgroundColor: 'rgba(150,150,150,0.1)', justifyContent: 'center', alignItems: 'center' }]}>
+                <ThemedText style={{ opacity: 0.5, letterSpacing: 2 }}>NOTHING FEATURED YET</ThemedText>
+              </View>
+            )}
           </View>
         </View>
 
@@ -106,12 +122,13 @@ export default function HomeScreen() {
           </View>
         ) : (
           recipes.filter(r => r.category === selectedCategory || (selectedCategory === 'Foundation' && !r.category)).map((recipe) => (
-            <RecipeCard
+              <RecipeCard
               key={recipe.id}
               id={recipe.id.toString()}
               title={recipe.title_en || recipe.title_ko}
               description={recipe.week || 'Special Entry'}
               imageUrl={recipe.image_url}
+              isLocked={recipe.category === 'Competition Class'}
             />
           ))
         )}

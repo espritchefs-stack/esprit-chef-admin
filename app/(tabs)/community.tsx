@@ -9,7 +9,8 @@ import {
   TextInput, 
   KeyboardAvoidingView, 
   Platform,
-  Alert
+  Alert,
+  Linking
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedText } from '@/components/themed-text';
@@ -32,6 +33,7 @@ export default function CommunityFeedScreen() {
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [isPremium, setIsPremium] = useState(false);
 
   // Post Creation State
   const [isModalVisible, setModalVisible] = useState(false);
@@ -102,6 +104,19 @@ export default function CommunityFeedScreen() {
         setPosts(feedPosts);
       } else {
         setPosts(data || []);
+        
+        // Also fetch current user's premium status
+        if (session?.user?.id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('is_premium')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileData) {
+            setIsPremium(profileData.is_premium);
+          }
+        }
       }
     } catch (e) {
       console.error("Error fetching community posts", e);
@@ -375,7 +390,7 @@ export default function CommunityFeedScreen() {
         />
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button (Create Post) */}
       <Pressable 
         style={({ pressed }) => [styles.fab, pressed && { opacity: 0.8 }]} 
         onPress={() => setModalVisible(true)}
@@ -383,6 +398,21 @@ export default function CommunityFeedScreen() {
         <IconSymbol name="plus" size={24} color="#FFF" />
         <ThemedText style={styles.fabText}>{t('community')}</ThemedText>
       </Pressable>
+
+      {/* Premium Specific Channel.io / KakaoTalk Floating Button */}
+      {isPremium && (
+        <Pressable 
+          style={({ pressed }) => [styles.premiumSupportFab, pressed && { opacity: 0.8 }]} 
+          onPress={() => {
+            Linking.openURL('http://pf.kakao.com/_BxeTqj/chat').catch((err) => 
+              console.error('Failed to open KakaoTalk URL', err)
+            );
+          }}
+        >
+          <IconSymbol name="bubble.left.and.bubble.right.fill" size={20} color="#000" />
+          <ThemedText style={styles.premiumSupportText}>셰프님께 1:1 질문하기</ThemedText>
+        </Pressable>
+      )}
 
       {/* Post Creation Modal */}
       <Modal visible={isModalVisible} animationType="slide" presentationStyle="pageSheet">
@@ -561,6 +591,31 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     letterSpacing: 1,
+  },
+  premiumSupportFab: {
+    position: 'absolute',
+    bottom: 100, // Positioned above the primary FAB
+    right: 24,
+    height: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: '#EEEEEE',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+  },
+  premiumSupportText: {
+    fontFamily: 'Inter_600SemiBold',
+    color: '#000',
+    fontSize: 12,
   },
   modalContainer: {
     flex: 1,

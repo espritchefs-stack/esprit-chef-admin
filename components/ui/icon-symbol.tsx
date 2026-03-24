@@ -27,6 +27,15 @@ const MAPPING = {
   'magnifyingglass': 'search',
   'person.2.fill': 'people',
   'person.fill': 'person',
+  'calendar.badge.clock': 'event',
+  'qrcode.viewfinder': 'qr-code-scanner',
+  'bubble.left.and.bubble.right.fill': 'forum',
+  'sparkles': 'auto-awesome',
+  'globe': 'language',
+  'lock.fill': 'lock',
+  'checkmark.circle.fill': 'check-circle',
+  'chevron.left': 'chevron-left',
+  'xmark.circle.fill': 'cancel',
 } as any;
 
 /**

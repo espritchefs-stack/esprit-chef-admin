@@ -7,6 +7,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/ctx/auth';
 import '@/lib/i18n';
+import '@/lib/i18n';
+// import { LogLevel, OneSignal } from 'react-native-onesignal';
+import { Platform } from 'react-native';
+import { setupPurchases } from '@/lib/purchases';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -56,6 +60,23 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      
+      // Initialize RevenueCat
+      setupPurchases().catch(e => console.warn("RevenueCat Init Error (Likely Expo Go):", e));
+      
+      // Initialize OneSignal Push Notifications (Requires EAS Build/Native Client)
+      // Remove this check or handle properly when moving to production with real App ID
+      // NOTE: Commented out for Expo Go compatibility. Uncomment when building with EAS.
+      /*
+      if (Platform.OS !== 'web') {
+        const ONESIGNAL_APP_ID = "YOUR_ONESIGNAL_APP_ID_HERE"; // Placeholder
+        OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+        OneSignal.initialize(ONESIGNAL_APP_ID);
+
+        // Optional: Request permission right away, or later in the app flow
+        OneSignal.Notifications.requestPermission(true);
+      }
+      */
     }
   }, [loaded]);
 

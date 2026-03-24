@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, Pressable, View, Alert } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { useAuth } from '@/ctx/auth';
 import { supabase } from '@/lib/supabase';
 import { ThemedText } from '@/components/themed-text';
@@ -28,6 +30,42 @@ export default function LoginScreen() {
     });
     setLoading(false);
     if (error) Alert.alert('Error', error.message);
+  };
+
+  const handleEmailSignUp = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    setLoading(false);
+    if (error) Alert.alert('Error', error.message);
+    else Alert.alert('Success', 'Check your email for the confirmation link or login if auto-confirmed.');
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const redirectUrl = Linking.createURL('/(tabs)');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+      if (error) throw error;
+      
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === 'success') {
+          // Supabase handles the session from the URL if deep linking is configured
+        }
+      }
+    } catch (e: any) {
+      Alert.alert('Notice', 'Google login requires configuration in Supabase dashboard.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSecretCodeLogin = () => {
@@ -75,22 +113,41 @@ export default function LoginScreen() {
             secureTextEntry
             style={[styles.input, { color: textColor, borderBottomColor: borderColor }]}
           />
-          <Pressable 
-            onPress={handleEmailLogin}
-            disabled={loading}
-            style={({ pressed }) => [
-              styles.button,
-              { backgroundColor: textColor },
-              pressed && { opacity: 0.8 }
-            ]}
-          >
-            <ThemedText style={[styles.buttonText, { color: backgroundColor }]}>
-              {loading ? 'SIGNING IN...' : 'SIGN IN'}
-            </ThemedText>
-          </Pressable>
+          <View style={styles.buttonRow}>
+            <Pressable 
+              onPress={handleEmailLogin}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.button,
+                styles.halfButton,
+                { backgroundColor: textColor },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <ThemedText style={[styles.buttonText, { color: backgroundColor }]}>
+                {loading ? '...' : 'SIGN IN'}
+              </ThemedText>
+            </Pressable>
 
-          {/* Placeholder for real OAuth */}
+            <Pressable 
+              onPress={handleEmailSignUp}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.button,
+                styles.halfButton,
+                { backgroundColor: 'transparent', borderWidth: 1, borderColor: textColor },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <ThemedText style={[styles.buttonText, { color: textColor }]}>
+                {loading ? '...' : 'SIGN UP'}
+              </ThemedText>
+            </Pressable>
+          </View>
+
           <Pressable 
+            onPress={handleGoogleLogin}
+            disabled={loading}
             style={({ pressed }) => [
               styles.googleButton,
               { borderColor },
@@ -190,6 +247,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfButton: {
+    flex: 1,
   },
   buttonText: {
     fontWeight: '600',

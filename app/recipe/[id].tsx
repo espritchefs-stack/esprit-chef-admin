@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, View, ScrollView, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { ThemedText } from '@/components/themed-text';
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as WebBrowser from 'expo-web-browser';
 import { openPolarCheckout } from '@/lib/polar';
-
+import Purchases from 'react-native-purchases';
 export default function RecipeDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -20,28 +20,42 @@ export default function RecipeDetailsScreen() {
   const borderColor = useThemeColor({}, 'border');
 
   const [recipe, setRecipe] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
-    async function fetchRecipe() {
+    async function fetchData() {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        let profileData = null;
+        if (session?.user?.id) {
+          const { data: pData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          profileData = pData;
+        }
+        setProfile(profileData);
+
+        const { data: rData, error: rError } = await supabase
           .from('recipes')
           .select('*')
           .eq('id', id)
           .single();
         
-        if (error) throw error;
-        setRecipe(data);
+        if (rError) throw rError;
+        setRecipe(rData);
       } catch (error) {
-        console.error("Error fetching recipe:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
     }
-    fetchRecipe();
+    fetchData();
   }, [id]);
 
   if (isLoading) {
@@ -66,14 +80,48 @@ export default function RecipeDetailsScreen() {
 
   const handleSubscribe = async () => {
     setIsCheckingOut(true);
-    const success = await openPolarCheckout('premium_tier');
-    setIsCheckingOut(false);
-    
-    if (success) {
-      // Typically you'd refresh the user context to unlock the content
-      console.log('Returned from Polar checkout flow');
+    try {
+      // Use RevenueCat to purchase the product
+      const { customerInfo } = await Purchases.purchaseProduct('esprit_premium_monthly');
+      
+      // Check if entitlement is active or any subscription is active
+      const hasPremium = typeof customerInfo.entitlements.active['Premium'] !== "undefined" 
+                         || customerInfo.activeSubscriptions.length > 0;
+      
+      if (hasPremium) {
+        // Refresh profile to reflect active premium status
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          const { data: pData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (pData) {
+            setProfile(pData);
+          } else {
+            // Optimistic update if fetch fails
+            setProfile((prev: any) => ({ ...prev, is_premium: true }));
+          }
+        } else {
+          setProfile((prev: any) => ({ ...prev, is_premium: true }));
+        }
+      }
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        console.warn("Purchase error:", e.message);
+        Alert.alert(
+          '결제 연결 안내', 
+          `에러 원인: ${e.message}\n\n💡 영자의 팁: 인앱 결제(RevenueCat) 기능은 일반적인 Expo Go 앱에서는 테스트할 수 없고, EAS로 고유 빌드(Dev Client)를 뽑으셔야 정상 작동한답니다!`
+        );
+      }
+    } finally {
+      setIsCheckingOut(false);
     }
   };
+
+  const isPremium = profile?.is_premium;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.contentContainer}>
@@ -103,36 +151,94 @@ export default function RecipeDetailsScreen() {
 
       {recipe.pdf_url && (
         <View style={styles.pdfContainer}>
+          {isPremium ? (
+            <Pressable 
+              style={[styles.pdfButton, { backgroundColor: '#D4AF37' }]}
+              onPress={async () => {
+                await WebBrowser.openBrowserAsync(recipe.pdf_url);
+              }}
+            >
+              <ThemedText style={styles.pdfButtonText}>수업용 레시피 PDF 열람하기</ThemedText>
+            </Pressable>
+          ) : (
+            <Pressable 
+              style={[styles.pdfButton, { backgroundColor: '#1A1A1A', borderColor: '#D4AF37', borderWidth: 1 }]}
+              onPress={handleSubscribe}
+              disabled={isCheckingOut}
+            >
+              {isCheckingOut ? (
+                <ActivityIndicator size="small" color="#D4AF37" />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <IconSymbol name="lock.fill" size={16} color="#D4AF37" />
+                  <ThemedText style={[styles.pdfButtonText, { color: '#D4AF37' }]}>프리미엄 구독하고 레시피 열람하기</ThemedText>
+                </View>
+              )}
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {recipe.purchase_url && (
+        <View style={styles.purchaseContainer}>
           <Pressable 
-            style={[styles.pdfButton, { backgroundColor: '#D4AF37' }]}
+            style={({ pressed }) => [
+              styles.purchaseButton,
+              { borderColor: textColor, backgroundColor: backgroundColor },
+              pressed && { opacity: 0.7 }
+            ]}
             onPress={async () => {
-              await WebBrowser.openBrowserAsync(recipe.pdf_url);
+              await WebBrowser.openBrowserAsync(recipe.purchase_url);
             }}
           >
-            <ThemedText style={styles.pdfButtonText}>수업용 레시피 PDF 열람하기</ThemedText>
+            <ThemedText style={[styles.purchaseButtonText, { color: textColor }]}>
+              셰프의 엄선: 이 요리에 필요한 도구/재료 보러가기
+            </ThemedText>
           </Pressable>
         </View>
       )}
 
-      <View style={styles.subscribeContainer}>
-        <ThemedText style={styles.subscribeDescription}>
-          {t('subscribe_desc')}
-        </ThemedText>
-        <Pressable 
-          onPress={handleSubscribe}
-          disabled={isCheckingOut}
-          style={({ pressed }) => [
-            styles.subscribeButton,
-            { backgroundColor: textColor },
-            pressed && { opacity: 0.8 },
-            isCheckingOut && { opacity: 0.5 }
-          ]}
-        >
-          <ThemedText style={[styles.subscribeButtonText, { color: backgroundColor }]}>
-            {isCheckingOut ? 'WAIT...' : t('subscribe_premium')}
+      {!isPremium && (
+        <View style={styles.paywallContainer}>
+          <ThemedText style={styles.paywallTitle}>
+            한 달에 커피 한 잔 값으로,{'\n'}내 주방에 품격을 더하다.
           </ThemedText>
-        </Pressable>
-      </View>
+          
+          <ThemedText style={styles.paywallSubtitle}>
+            월 $4.99로 에스프릿 셰프의 모든 프렌치 시크릿 레시피와 24시간 AI 어시스턴트를 무제한으로 누려보세요. 클래스의 감동이 일상에서도 계속됩니다.
+          </ThemedText>
+
+          <View style={styles.paywallBenefitsContainer}>
+            <View style={styles.paywallBenefitRow}>
+              <IconSymbol name="checkmark.circle.fill" size={16} color="#D4AF37" />
+              <ThemedText style={styles.paywallBenefitText}>오프라인 클래스 핵심 레시피 무제한 열람</ThemedText>
+            </View>
+            <View style={styles.paywallBenefitRow}>
+              <IconSymbol name="checkmark.circle.fill" size={16} color="#D4AF37" />
+              <ThemedText style={styles.paywallBenefitText}>셰프의 노하우가 담긴 팁과 지속적인 신규 요리 업데이트</ThemedText>
+            </View>
+            <View style={styles.paywallBenefitRow}>
+              <IconSymbol name="checkmark.circle.fill" size={16} color="#D4AF37" />
+              <ThemedText style={styles.paywallBenefitText}>궁금할 땐 언제든 답해주는 나만의 AI 요리 조수</ThemedText>
+            </View>
+          </View>
+
+          <Pressable 
+            onPress={handleSubscribe}
+            disabled={isCheckingOut}
+            style={({ pressed }) => [
+              styles.subscribeButton,
+              { backgroundColor: '#D4AF37' },
+              pressed && { opacity: 0.8 },
+              isCheckingOut && { opacity: 0.5 }
+            ]}
+          >
+            <ThemedText style={[styles.subscribeButtonText, { color: '#000000' }]}>
+              {isCheckingOut ? '결제 진행 중...' : '[ $4.99 / 월 구독으로 시작하기 ]'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -263,28 +369,81 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.8,
   },
-  subscribeContainer: {
-    marginTop: 64,
+  purchaseContainer: {
+    marginTop: 24,
+    width: '100%',
     alignItems: 'center',
-    gap: 24,
   },
-  subscribeDescription: {
-    fontSize: 12,
-    opacity: 0.5,
+  purchaseButton: {
+    width: '100%',
+    paddingVertical: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  purchaseButtonText: {
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+    fontSize: 14,
+    letterSpacing: 1,
     textAlign: 'center',
-    lineHeight: 20,
+  },
+  paywallContainer: {
+    marginTop: 64,
+    padding: 24,
+    backgroundColor: 'rgba(212, 175, 55, 0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    alignItems: 'center',
+    gap: 20,
+  },
+  paywallTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 28,
+    color: '#D4AF37',
+  },
+  paywallSubtitle: {
+    fontSize: 13,
+    opacity: 0.8,
+    textAlign: 'center',
+    lineHeight: 22,
     letterSpacing: 0.5,
+  },
+  paywallBenefitsContainer: {
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  paywallBenefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  paywallBenefitText: {
+    fontSize: 13,
+    opacity: 0.9,
+    flex: 1,
+    lineHeight: 18,
   },
   subscribeButton: {
     width: '100%',
     height: 56,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#D4AF37',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   subscribeButtonText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   pdfContainer: {
     marginBottom: 48,
