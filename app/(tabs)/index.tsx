@@ -211,7 +211,7 @@ export default function HomeScreen() {
         <ThemedText style={styles.sectionHeader}>{t('vault_record')}</ThemedText>
 
         <View style={styles.categoryRow}>
-          {['Foundation', 'Intermediate', 'Professional'].map((cat) => (
+          {['Foundation', 'Intermediate', 'Professional', 'Banchan'].map((cat) => (
             <Pressable 
               key={cat} 
               onPress={() => setSelectedCategory(cat)}
