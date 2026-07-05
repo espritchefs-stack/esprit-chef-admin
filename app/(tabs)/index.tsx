@@ -267,7 +267,7 @@ export default function HomeScreen() {
                     <View style={{ flex: 1 }}>
                       <ThemedText style={styles.recipeTitle} numberOfLines={1}>{recipe.title_ko}</ThemedText>
                       <ThemedText style={styles.searchResultMeta}>
-                        {t(`category_${(recipe.category || '').toLowerCase()}`)}{recipe.week ? ` · ${recipe.week}` : ''}
+                        {t(`category_${(recipe.category || '').toLowerCase()}`)}{displayWeek(recipe.week) ? ` · ${displayWeek(recipe.week)}` : ''}
                       </ThemedText>
                     </View>
                     <ThemedText style={styles.recipeChevron}>›</ThemedText>
@@ -357,7 +357,10 @@ export default function HomeScreen() {
               </View>
             );
           }
-          const top = filtered.slice(0, 6);
+          // 실사가 있는 레시피를 카드 레일 앞쪽에 (무드커버 반복 노출 방지)
+          const top = [...filtered]
+            .sort((a, b) => (b.image_url ? 1 : 0) - (a.image_url ? 1 : 0))
+            .slice(0, 6);
           const cover = CATEGORY_COVERS[selectedCategory] || CATEGORY_COVERS.Foundation;
           return (
             <>
@@ -377,8 +380,8 @@ export default function HomeScreen() {
                       transition={400}
                     />
                     <View style={styles.recipeCardOverlay}>
-                      {recipe.week ? (
-                        <ThemedText style={styles.recipeCardWeek}>{recipe.week}</ThemedText>
+                      {displayWeek(recipe.week) ? (
+                        <ThemedText style={styles.recipeCardWeek}>{displayWeek(recipe.week)}</ThemedText>
                       ) : null}
                       <ThemedText style={styles.recipeCardTitle} numberOfLines={2}>{recipe.title_ko}</ThemedText>
                     </View>
@@ -418,6 +421,10 @@ export default function HomeScreen() {
     </ParallaxScrollView>
   );
 }
+
+// "12강" 같은 강 번호는 표기하지 않음 (수업 주차 '1주차' 등은 유지)
+const displayWeek = (week: string | null | undefined) =>
+  week && !/^\d+\s*강$/.test(week.trim()) ? week : null;
 
 // 카테고리별 폴백 커버 (레시피에 실사가 없을 때) — AI 무드컷, 음식 완성컷 아님
 const CATEGORY_COVERS: Record<string, any> = {

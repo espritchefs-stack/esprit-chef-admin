@@ -167,7 +167,9 @@ export default function RecipeDetailsScreen() {
       </Pressable>
 
       <View style={styles.header}>
-        {recipe.week && <ThemedText style={styles.weekText}>{recipe.week}</ThemedText>}
+        {recipe.week && !/^\d+\s*강$/.test(String(recipe.week).trim()) && (
+          <ThemedText style={styles.weekText}>{recipe.week}</ThemedText>
+        )}
         <ThemedText type="title" style={styles.titleEn}>
           {recipe.title_ko}
         </ThemedText>
