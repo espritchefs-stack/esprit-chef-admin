@@ -1,10 +1,52 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Upload, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Loader2, LogOut } from 'lucide-react';
 
 export default function AdminUploadPage() {
+  // Auth Gate: 스토리지·recipes 쓰기는 profiles.is_admin RLS로 보호되므로 관리자 로그인이 필수
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserEmail(session.user.email ?? null);
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        setIsAdmin(!!data?.is_admin);
+      } else {
+        setUserEmail(null);
+        setIsAdmin(false);
+      }
+      setAuthChecked(true);
+    };
+    checkAdmin();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => checkAdmin());
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError('');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+    if (error) setLoginError(error.message);
+    setIsLoggingIn(false);
+  };
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Foundation');
   const [purchaseUrl, setPurchaseUrl] = useState('');
@@ -185,14 +227,79 @@ export default function AdminUploadPage() {
     }
   };
 
+  // ---- Auth Gate 렌더링 ----
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <Loader2 className="animate-spin w-8 h-8 text-[#D4AF37]" />
+      </div>
+    );
+  }
+
+  if (!userEmail || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
+        <form onSubmit={handleLogin} className="bg-white p-10 shadow-sm border border-gray-100 rounded-2xl w-full max-w-md">
+          <h1 className="text-xl tracking-[0.2em] font-medium text-gray-800 uppercase text-center mb-2">
+            Esprit Admin Web
+          </h1>
+          <p className="text-xs text-gray-400 text-center mb-8 tracking-widest uppercase">Chef Portal — Sign In</p>
+          {userEmail && !isAdmin && (
+            <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-700 text-sm">
+              {userEmail} 계정에는 관리자 권한이 없습니다.
+              <button type="button" onClick={() => supabase.auth.signOut()} className="underline ml-2">로그아웃</button>
+            </div>
+          )}
+          {loginError && (
+            <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-700 text-sm">{loginError}</div>
+          )}
+          <div className="space-y-4">
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              placeholder="Email"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent block px-4 py-3 placeholder-gray-400 outline-none"
+              required
+            />
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent block px-4 py-3 placeholder-gray-400 outline-none"
+              required
+            />
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full flex justify-center items-center py-3 px-6 rounded-lg shadow-md text-white bg-[#D4AF37] hover:bg-[#C5A028] transition-colors disabled:opacity-70 font-medium uppercase tracking-widest text-sm"
+            >
+              {isLoggingIn ? <Loader2 className="animate-spin h-5 w-5" /> : 'Sign In'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-gray-900 font-sans selection:bg-[#D4AF37] selection:text-white pb-20">
       <header className="px-8 py-6 border-b border-gray-200 bg-white flex items-center justify-between shadow-sm">
         <h1 className="text-xl tracking-[0.2em] font-medium text-gray-800 uppercase">
           Esprit Admin Web
         </h1>
-        <div className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold border border-[#D4AF37] px-3 py-1 rounded-full">
-          Chef Portal
+        <div className="flex items-center gap-3">
+          <div className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold border border-[#D4AF37] px-3 py-1 rounded-full">
+            Chef Portal
+          </div>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            title={`${userEmail} 로그아웃`}
+            className="text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -236,7 +343,7 @@ export default function AdminUploadPage() {
                 Vault Category
               </label>
               <div className="flex flex-wrap gap-3">
-                {['Foundation', 'Intermediate', 'Professional', 'Competition Class'].map((cat) => (
+                {['Foundation', 'Intermediate', 'Professional', 'Banchan', 'Competition Class'].map((cat) => (
                   <button
                     key={cat}
                     type="button"
