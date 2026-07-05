@@ -5,29 +5,31 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#111111';
-const tintColorDark = '#FFFFFF';
+// Esprit Chef brand palette — aligned with espritchefs.com
+// Prussian Blue: #0A2342  |  Gold: #CAA876 / #C9A96E  |  Pale Oak: #E2D1B3
+const tintColorLight = '#0A2342';
+const tintColorDark  = '#CAA876';   // gold-300
 
 export const Colors = {
   light: {
-    text: '#111111',
-    background: '#FFFFFF',
-    tint: tintColorLight,
-    icon: '#666666',
-    tabIconDefault: '#999999',
+    text:            '#0A2342',   // Prussian Blue
+    background:      '#FFFFFF',
+    tint:            tintColorLight,
+    icon:            '#5A5656',   // charcoal
+    tabIconDefault:  '#999999',
     tabIconSelected: tintColorLight,
-    card: '#F8F8F8',
-    border: '#EEEEEE',
+    card:            '#F5F0E8',   // pale oak warm
+    border:          '#E2D1B3',   // pale oak border
   },
   dark: {
-    text: '#FFFFFF',
-    background: '#111111',
-    tint: tintColorDark,
-    icon: '#999999',
-    tabIconDefault: '#666666',
+    text:            '#FFFFFF',
+    background:      '#0A2342',   // dark-950 Prussian Blue
+    tint:            tintColorDark,
+    icon:            '#CAA876',   // gold-300
+    tabIconDefault:  'rgba(255,255,255,0.30)',
     tabIconSelected: tintColorDark,
-    card: '#222222',
-    border: '#333333',
+    card:            '#0C1D36',   // dark-900
+    border:          'rgba(255,255,255,0.08)', // subtle glass border
   },
 };
 

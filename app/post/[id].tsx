@@ -49,8 +49,10 @@ export default function PostDetailScreen() {
 
       const likedStr = await AsyncStorage.getItem('guest_liked_posts');
       if (likedStr) {
-        const likedSet = new Set(JSON.parse(likedStr));
-        setIsLiked(likedSet.has(postId));
+        try {
+          const likedSet = new Set(JSON.parse(likedStr));
+          setIsLiked(likedSet.has(postId));
+        } catch {}
       }
 
       // 0. Intercept and completely bypass Supabase for Mock IDs to avoid Postgres 22P02 crashes
@@ -262,7 +264,7 @@ export default function PostDetailScreen() {
           style={styles.commentAvatar} 
         />
         <View style={styles.commentBody}>
-          <ThemedText style={[styles.commentUsername, isBot && { color: '#D4AF37' }]}>
+          <ThemedText style={[styles.commentUsername, isBot && { color: '#CAA876' }]}>
             {displayName} {isBot && '🛡️'}
           </ThemedText>
           <ThemedText style={styles.commentText}>{item.content}</ThemedText>
@@ -313,7 +315,8 @@ export default function PostDetailScreen() {
 
                 const postId = Array.isArray(id) ? id[0] : (id as string);
                 const likedStr = await AsyncStorage.getItem('guest_liked_posts');
-                const likedList = new Set(likedStr ? JSON.parse(likedStr) : []);
+                let likedList: Set<string> = new Set();
+                try { likedList = new Set(likedStr ? JSON.parse(likedStr) : []); } catch {}
                 likedList.add(postId);
                 await AsyncStorage.setItem('guest_liked_posts', JSON.stringify(Array.from(likedList)));
 
@@ -548,7 +551,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   submitText: {
-    color: '#D4AF37',
+    color: '#CAA876',
     fontFamily: 'PlayfairDisplay_600SemiBold',
     fontSize: 14,
     letterSpacing: 0.5,

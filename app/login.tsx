@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, Pressable, View, Alert } from 'react-native';
+import { StyleSheet, TextInput, Pressable, View, Alert, StatusBar } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useAuth } from '@/ctx/auth';
@@ -82,112 +82,130 @@ export default function LoginScreen() {
     i18n.changeLanguage(newLang);
   };
 
+  // 로그인 화면은 항상 Prussian Blue 다크 배경 고정
+  const BG    = '#0A2342';
+  const GOLD  = '#CAA876';
+  const BORDER = 'rgba(255,255,255,0.12)';
+  const PLACEHOLDER = 'rgba(255,255,255,0.30)';
+
   return (
-    <ThemedView style={[styles.container, { backgroundColor }]}>
+    <View style={[styles.container, { backgroundColor: BG }]}>
+      <StatusBar barStyle="light-content" backgroundColor={BG} />
+      {/* 언어 토글 */}
       <Pressable onPress={toggleLanguage} style={styles.languageToggle}>
-        <ThemedText style={styles.languageToggleText}>
+        <ThemedText style={[styles.languageToggleText, { color: PLACEHOLDER }]}>
           {i18n.language === 'ko' ? 'EN' : 'KR'}
         </ThemedText>
       </Pressable>
 
       <View style={styles.formContainer}>
-        <ThemedText type="title" style={styles.header}>
-          {t('app_title')}
-        </ThemedText>
-        
+        {/* 로고 */}
+        <View style={styles.logoBlock}>
+          <ThemedText style={styles.logoEn}>ESPRIT</ThemedText>
+          <ThemedText style={styles.logoKo}>에스프릿셰프 쿠킹아카데미</ThemedText>
+        </View>
+
+        {/* 이메일 로그인 섹션 */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>MEMBER LOGIN</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: PLACEHOLDER }]}>MEMBER LOGIN</ThemedText>
           <TextInput
             placeholder="Email Address"
-            placeholderTextColor="#666"
+            placeholderTextColor={PLACEHOLDER}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
-            style={[styles.input, { color: textColor, borderBottomColor: borderColor }]}
+            style={[styles.input, { color: '#FFFFFF', borderBottomColor: BORDER }]}
           />
           <TextInput
             placeholder="Password"
-            placeholderTextColor="#666"
+            placeholderTextColor={PLACEHOLDER}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            style={[styles.input, { color: textColor, borderBottomColor: borderColor }]}
+            style={[styles.input, { color: '#FFFFFF', borderBottomColor: BORDER }]}
           />
           <View style={styles.buttonRow}>
-            <Pressable 
+            {/* SIGN IN — gold fill */}
+            <Pressable
               onPress={handleEmailLogin}
               disabled={loading}
               style={({ pressed }) => [
-                styles.button,
-                styles.halfButton,
-                { backgroundColor: textColor },
-                pressed && { opacity: 0.8 }
+                styles.button, styles.halfButton,
+                { backgroundColor: GOLD },
+                pressed && { opacity: 0.85 }
               ]}
             >
-              <ThemedText style={[styles.buttonText, { color: backgroundColor }]}>
-                {loading ? '...' : 'SIGN IN'}
+              <ThemedText style={[styles.buttonText, { color: '#0A2342' }]}>
+                {loading ? '···' : 'SIGN IN'}
               </ThemedText>
             </Pressable>
 
-            <Pressable 
+            {/* SIGN UP — outline */}
+            <Pressable
               onPress={handleEmailSignUp}
               disabled={loading}
               style={({ pressed }) => [
-                styles.button,
-                styles.halfButton,
-                { backgroundColor: 'transparent', borderWidth: 1, borderColor: textColor },
+                styles.button, styles.halfButton,
+                { backgroundColor: 'transparent', borderWidth: 1, borderColor: GOLD },
                 pressed && { opacity: 0.8 }
               ]}
             >
-              <ThemedText style={[styles.buttonText, { color: textColor }]}>
-                {loading ? '...' : 'SIGN UP'}
+              <ThemedText style={[styles.buttonText, { color: GOLD }]}>
+                {loading ? '···' : 'SIGN UP'}
               </ThemedText>
             </Pressable>
           </View>
 
-          <Pressable 
+          {/* Google */}
+          <Pressable
             onPress={handleGoogleLogin}
             disabled={loading}
             style={({ pressed }) => [
               styles.googleButton,
-              { borderColor },
+              { borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.05)' },
               pressed && { opacity: 0.8 }
             ]}
           >
-            <IconSymbol name="globe" size={16} color={textColor} style={{ marginRight: 8 }} />
-            <ThemedText style={styles.googleButtonText}>CONTINUE WITH GOOGLE</ThemedText>
+            <IconSymbol name="globe" size={16} color={PLACEHOLDER} style={{ marginRight: 8 }} />
+            <ThemedText style={[styles.googleButtonText, { color: PLACEHOLDER }]}>
+              CONTINUE WITH GOOGLE
+            </ThemedText>
           </Pressable>
         </View>
 
+        {/* OR 구분선 */}
         <View style={styles.dividerContainer}>
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-          <ThemedText style={styles.orText}>OR</ThemedText>
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+          <View style={[styles.divider, { backgroundColor: BORDER }]} />
+          <ThemedText style={[styles.orText, { color: PLACEHOLDER }]}>OR</ThemedText>
+          <View style={[styles.divider, { backgroundColor: BORDER }]} />
         </View>
 
+        {/* 오프라인 수강생 코드 입력 */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>OFFLINE STUDENT ACCESS</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: PLACEHOLDER }]}>OFFLINE STUDENT ACCESS</ThemedText>
           <TextInput
             placeholder={t('secret_code_placeholder')}
-            placeholderTextColor="#666"
+            placeholderTextColor={PLACEHOLDER}
             value={secretCode}
             onChangeText={setSecretCode}
             secureTextEntry
-            style={[styles.inputCenter, { color: textColor, borderColor }]}
+            style={[styles.inputCenter, { color: '#FFFFFF', borderColor: BORDER }]}
           />
-          <Pressable 
+          <Pressable
             onPress={handleSecretCodeLogin}
             style={({ pressed }) => [
               styles.outlineButton,
-              { borderColor },
+              { borderColor: GOLD },
               pressed && { opacity: 0.8 }
             ]}
           >
-            <ThemedText style={styles.outlineButtonText}>{t('enter_btn')}</ThemedText>
+            <ThemedText style={[styles.outlineButtonText, { color: GOLD }]}>
+              {t('enter_btn')}
+            </ThemedText>
           </Pressable>
         </View>
       </View>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -208,38 +226,48 @@ const styles = StyleSheet.create({
   languageToggleText: {
     fontSize: 10,
     letterSpacing: 2,
-    opacity: 0.5,
   },
   formContainer: {
     width: '100%',
     maxWidth: 400,
     gap: 40,
   },
-  header: {
-    textAlign: 'center',
-    letterSpacing: 8,
+  logoBlock: {
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  logoEn: {
+    color: '#CAA876',       // gold-300
+    fontSize: 36,
+    letterSpacing: 12,
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+  },
+  logoKo: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    letterSpacing: 2,
   },
   section: {
     gap: 16,
   },
   sectionTitle: {
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 2,
-    opacity: 0.5,
   },
   input: {
     height: 48,
     borderBottomWidth: 1,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 15,
     letterSpacing: 1,
   },
   inputCenter: {
     height: 56,
     borderWidth: 1,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 15,
     letterSpacing: 2,
   },
   button: {
@@ -256,19 +284,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   buttonText: {
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 12,
     letterSpacing: 2,
   },
   googleButton: {
-    height: 56,
+    height: 52,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
   },
   googleButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 1,
   },
   outlineButton: {
@@ -280,20 +308,20 @@ const styles = StyleSheet.create({
   outlineButtonText: {
     fontSize: 12,
     letterSpacing: 2,
+    fontWeight: '600',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
     marginVertical: 8,
-    opacity: 0.5,
   },
   divider: {
     flex: 1,
     height: 1,
   },
   orText: {
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 2,
   },
 });

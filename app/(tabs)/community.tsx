@@ -30,8 +30,11 @@ export default function CommunityFeedScreen() {
   const { session, isGuest } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'community' | 'reviews'>('community');
   const [posts, setPosts] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [isPremium, setIsPremium] = useState(false);
 
@@ -64,7 +67,9 @@ export default function CommunityFeedScreen() {
         let feedPosts: any[] = data || [];
 
         const likedStr = await AsyncStorage.getItem('guest_liked_posts');
-        if (likedStr) setLikedPosts(new Set(JSON.parse(likedStr)));
+        if (likedStr) {
+          try { setLikedPosts(new Set(JSON.parse(likedStr))); } catch {}
+        }
 
         const storedPoints = await AsyncStorage.getItem('guest_points');
         if (!storedPoints) {
@@ -141,9 +146,27 @@ export default function CommunityFeedScreen() {
     }
   }
 
+  async function fetchReviews() {
+    setIsReviewsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('id, content, rating, image_url, created_at, profiles(username, tier, avatar_url)')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setReviews(data);
+      }
+    } catch (e) {
+      console.error('Error fetching reviews', e);
+    } finally {
+      setIsReviewsLoading(false);
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
       fetchPosts();
+      fetchReviews();
     }, [isGuest, session])
   );
 
@@ -309,7 +332,7 @@ export default function CommunityFeedScreen() {
               <ThemedText style={styles.tier}>{profile.tier || 'NOVICE'} TIER</ThemedText>
             </View>
           </View>
-          <ThemedText style={[styles.postPoints, { color: '#D4AF37' }]}>
+          <ThemedText style={[styles.postPoints, { color: '#CAA876' }]}>
             {profile.points ? `${profile.points.toLocaleString()}P` : '0P'}
           </ThemedText>
         </View>
@@ -368,36 +391,116 @@ export default function CommunityFeedScreen() {
     );
   };
 
+  const renderReview = ({ item }: { item: any }) => {
+    const profile = item.profiles || {};
+    const stars = item.rating || 5;
+    return (
+      <View style={[styles.reviewCard, { borderColor }]}>
+        <View style={styles.postHeader}>
+          <View style={styles.postHeaderLeft}>
+            <Image
+              source={{ uri: profile.avatar_url || 'https://i.pravatar.cc/150?u=review' }}
+              style={styles.avatar}
+            />
+            <View style={styles.headerText}>
+              <ThemedText style={styles.username}>{profile.username || '수강생'}</ThemedText>
+              <ThemedText style={styles.tier}>{profile.tier || 'STUDENT'} TIER</ThemedText>
+            </View>
+          </View>
+          <View style={styles.starsRow}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <ThemedText key={i} style={{ color: i < stars ? '#CAA876' : 'rgba(255,255,255,0.2)', fontSize: 12 }}>★</ThemedText>
+            ))}
+          </View>
+        </View>
+        {item.image_url ? (
+          <View style={styles.imageWrapper}>
+            <Image source={{ uri: item.image_url }} style={styles.postImage} contentFit="cover" />
+          </View>
+        ) : null}
+        <View style={styles.postFooter}>
+          <ThemedText style={styles.content}>{item.content}</ThemedText>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <ThemedText type="title" style={styles.screenTitle}>COMMUNITY</ThemedText>
-      
-      {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={textColor} />
-        </View>
-      ) : posts.length === 0 ? (
-        <View style={styles.center}>
-          <ThemedText style={styles.emptyText}>{t('write_post')}</ThemedText>
-        </View>
+
+      {/* Tab Selector */}
+      <View style={[styles.tabRow, { borderBottomColor: borderColor }]}>
+        {[
+          { key: 'community', label: '커뮤니티' },
+          { key: 'reviews', label: '수강후기' },
+        ].map((tab) => (
+          <Pressable
+            key={tab.key}
+            style={[
+              styles.tabButton,
+              activeTab === tab.key && { borderBottomColor: '#CAA876', borderBottomWidth: 2 },
+            ]}
+            onPress={() => setActiveTab(tab.key as 'community' | 'reviews')}
+          >
+            <ThemedText style={[
+              styles.tabLabel,
+              activeTab === tab.key ? { color: '#CAA876', fontWeight: '700' } : { opacity: 0.45 },
+            ]}>
+              {tab.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
+
+      {activeTab === 'community' ? (
+        isLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={textColor} />
+          </View>
+        ) : posts.length === 0 ? (
+          <View style={styles.center}>
+            <ThemedText style={styles.emptyText}>{t('write_post')}</ThemedText>
+          </View>
+        ) : (
+          <FlatList
+            data={posts}
+            keyExtractor={(item) => item.id}
+            renderItem={renderPost}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )
       ) : (
-        <FlatList
-          data={posts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPost}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
+        isReviewsLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={textColor} />
+          </View>
+        ) : reviews.length === 0 ? (
+          <View style={styles.center}>
+            <ThemedText style={styles.emptyText}>아직 등록된 후기가 없습니다</ThemedText>
+          </View>
+        ) : (
+          <FlatList
+            data={reviews}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderReview}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )
       )}
 
-      {/* Floating Action Button (Create Post) */}
-      <Pressable 
-        style={({ pressed }) => [styles.fab, pressed && { opacity: 0.8 }]} 
-        onPress={() => setModalVisible(true)}
-      >
-        <IconSymbol name="plus" size={24} color="#FFF" />
-        <ThemedText style={styles.fabText}>{t('community')}</ThemedText>
-      </Pressable>
+      {/* Floating Action Button (Create Post) — community tab only */}
+      {activeTab === 'community' && (
+        <Pressable
+          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.8 }]}
+          onPress={() => setModalVisible(true)}
+        >
+          <IconSymbol name="plus" size={24} color="#FFF" />
+          <ThemedText style={styles.fabText}>{t('community')}</ThemedText>
+        </Pressable>
+      )}
 
       {/* Premium Specific Channel.io / KakaoTalk Floating Button */}
       {isPremium && (
@@ -575,7 +678,7 @@ const styles = StyleSheet.create({
     height: 56,
     paddingHorizontal: 20,
     borderRadius: 28,
-    backgroundColor: '#D4AF37', // Luxury Gold
+    backgroundColor: '#CAA876', // Luxury Gold
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -610,7 +713,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#D4AF37',
+    borderColor: '#CAA876',
   },
   premiumSupportText: {
     fontFamily: 'Inter_600SemiBold',
@@ -640,7 +743,7 @@ const styles = StyleSheet.create({
   },
   modalPublish: {
     fontSize: 14,
-    color: '#D4AF37',
+    color: '#CAA876',
     fontWeight: '600',
   },
   modalBody: {
@@ -683,7 +786,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   changeImageText: {
-    color: '#D4AF37',
+    color: '#CAA876',
     fontSize: 12,
   },
   textArea: {
@@ -692,5 +795,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     textAlignVertical: 'top',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    marginHorizontal: 24,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabLabel: {
+    fontSize: 13,
+    letterSpacing: 1,
+  },
+  reviewCard: {
+    marginBottom: 48,
+    borderBottomWidth: 1,
+    paddingBottom: 16,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
   },
 });

@@ -142,7 +142,7 @@ export default function RecipeDetailsScreen() {
 
       <View style={[styles.imageContainer, { borderColor }]}>
         <Image
-          source={recipe.image_url}
+          source={recipe.image_url ? { uri: recipe.image_url } : require('@/assets/images/icon.png')}
           style={styles.image}
           contentFit="cover"
           transition={1000}
@@ -153,7 +153,7 @@ export default function RecipeDetailsScreen() {
         <View style={styles.pdfContainer}>
           {isPremium ? (
             <Pressable 
-              style={[styles.pdfButton, { backgroundColor: '#D4AF37' }]}
+              style={[styles.pdfButton, { backgroundColor: '#CAA876' }]}
               onPress={async () => {
                 await WebBrowser.openBrowserAsync(recipe.pdf_url);
               }}
@@ -162,7 +162,7 @@ export default function RecipeDetailsScreen() {
             </Pressable>
           ) : (
             <Pressable 
-              style={[styles.pdfButton, { backgroundColor: '#1A1A1A', borderColor: '#D4AF37', borderWidth: 1 }]}
+              style={[styles.pdfButton, { backgroundColor: '#0C1D36', borderColor: '#CAA876', borderWidth: 1 }]}
               onPress={handleSubscribe}
               disabled={isCheckingOut}
             >
@@ -171,7 +171,7 @@ export default function RecipeDetailsScreen() {
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <IconSymbol name="lock.fill" size={16} color="#D4AF37" />
-                  <ThemedText style={[styles.pdfButtonText, { color: '#D4AF37' }]}>프리미엄 구독하고 레시피 열람하기</ThemedText>
+                  <ThemedText style={[styles.pdfButtonText, { color: '#CAA876' }]}>프리미엄 구독하고 레시피 열람하기</ThemedText>
                 </View>
               )}
             </Pressable>
@@ -228,7 +228,7 @@ export default function RecipeDetailsScreen() {
             disabled={isCheckingOut}
             style={({ pressed }) => [
               styles.subscribeButton,
-              { backgroundColor: '#D4AF37' },
+              { backgroundColor: '#CAA876' },
               pressed && { opacity: 0.8 },
               isCheckingOut && { opacity: 0.5 }
             ]}
@@ -390,10 +390,10 @@ const styles = StyleSheet.create({
   paywallContainer: {
     marginTop: 64,
     padding: 24,
-    backgroundColor: 'rgba(212, 175, 55, 0.05)',
+    backgroundColor: 'rgba(202, 168, 118, 0.06)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderColor: 'rgba(202, 168, 118, 0.25)',
     alignItems: 'center',
     gap: 20,
   },
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 28,
-    color: '#D4AF37',
+    color: '#CAA876',
   },
   paywallSubtitle: {
     fontSize: 13,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#D4AF37',
+    shadowColor: '#CAA876',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#D4AF37',
+    shadowColor: '#CAA876',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

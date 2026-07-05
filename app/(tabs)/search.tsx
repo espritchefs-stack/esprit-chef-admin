@@ -132,11 +132,11 @@ export default function AIAssistantScreen() {
               <Pressable 
                 style={({ pressed }) => [
                   styles.aiActionButton, 
-                  { borderColor: '#D4AF37', backgroundColor: pressed ? 'rgba(212, 175, 55, 0.1)' : 'transparent' }
+                  { borderColor: '#CAA876', backgroundColor: pressed ? 'rgba(212, 175, 55, 0.1)' : 'transparent' }
                 ]}
                 onPress={() => Linking.openURL('http://pf.kakao.com/_BxeTqj/chat').catch(err => console.error(err))}
               >
-                <IconSymbol name="bubble.left.and.bubble.right.fill" size={16} color="#D4AF37" />
+                <IconSymbol name="bubble.left.and.bubble.right.fill" size={16} color="#CAA876" />
                 <ThemedText style={styles.aiActionButtonText}>셰프님께 직접 1:1 질문하기</ThemedText>
               </Pressable>
             </View>
@@ -170,7 +170,7 @@ export default function AIAssistantScreen() {
         <Pressable 
           style={({ pressed }) => [
             styles.quickLinkButton, 
-            { borderColor: '#D4AF37', backgroundColor: pressed ? 'rgba(212, 175, 55, 0.1)' : 'transparent' }
+            { borderColor: '#CAA876', backgroundColor: pressed ? 'rgba(212, 175, 55, 0.1)' : 'transparent' }
           ]}
           onPress={() => sendMessage("셰프님, 소금 한 꼬집은 정확히 어느 정도 양인가요?")}
           disabled={isLoading}
@@ -209,7 +209,7 @@ export default function AIAssistantScreen() {
               editable={!isLoading}
             />
             <Pressable 
-              style={[styles.sendButton, { backgroundColor: (inputText.trim() || selectedImage) && !isLoading ? '#D4AF37' : 'rgba(150,150,150,0.2)' }]}
+              style={[styles.sendButton, { backgroundColor: (inputText.trim() || selectedImage) && !isLoading ? '#CAA876' : 'rgba(150,150,150,0.2)' }]}
               onPress={() => sendMessage(inputText, selectedImage)}
               disabled={(!inputText.trim() && !selectedImage) || isLoading}
             >
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     fontFamily: 'PlayfairDisplay_600SemiBold',
     fontSize: 16,
     letterSpacing: 2,
-    color: '#D4AF37', // Gold accent
+    color: '#CAA876', // Gold accent
   },
   headerSubtitle: {
     fontSize: 10,
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   aiActionButtonText: {
     fontSize: 12,
     fontFamily: 'Inter_600SemiBold',
-    color: '#D4AF37',
+    color: '#CAA876',
   },
   quickLinksContainer: {
     paddingVertical: 24,
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#D4AF37',
+    shadowColor: '#CAA876',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   quickLinkText: {
     fontSize: 13,
     fontFamily: 'PlayfairDisplay_600SemiBold',
-    color: '#D4AF37',
+    color: '#CAA876',
     textAlign: 'center',
     letterSpacing: 0.5,
   },

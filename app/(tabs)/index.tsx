@@ -1,14 +1,14 @@
 import { Image } from 'expo-image';
-import { StyleSheet, View, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Pressable, Linking, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { RecipeCard } from '@/components/RecipeCard';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const backgroundColor = useThemeColor({}, 'background');
@@ -18,13 +18,18 @@ export default function HomeScreen() {
   const [featuredRecipe, setFeaturedRecipe] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Foundation');
+  const [selectedCourse, setSelectedCourse] = useState<'A코스' | 'B코스'>('A코스');
+  const CUISINES = ['이탈리안', '프렌치', '한식·일식', '아시안', '아메리칸', '유러피안'] as const;
+  type Cuisine = typeof CUISINES[number];
+  const [selectedCuisine, setSelectedCuisine] = useState<Cuisine>('이탈리안');
   const { t } = useTranslation();
+  const router = useRouter();
   useEffect(() => {
     async function fetchRecipes() {
       setIsLoading(true);
       try {
         // Fetch standard recipes
-        const { data: standardData, error: standardError } = await supabase.from('recipes').select('*').order('id', { ascending: true });
+        const { data: standardData, error: standardError } = await supabase.from('recipes').select('*').order('cooking_method', { ascending: true }).order('week', { ascending: true }).order('id', { ascending: true });
         if (standardError) throw standardError;
         setRecipes(standardData || []);
 
@@ -53,10 +58,11 @@ export default function HomeScreen() {
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#EEEEEE', dark: '#222222' }}
+      headerBackgroundColor={{ light: '#F5F0E8', dark: '#0C1D36' }}
       headerImage={
         <View style={styles.headerContainer}>
           <ThemedText type="title" style={styles.headerTitle}>ESPRIT</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>CHEF · COOKING ACADEMY</ThemedText>
         </View>
       }>
 
@@ -88,6 +94,61 @@ export default function HomeScreen() {
 
         <View style={[styles.divider, { borderBottomColor: borderColor }]} />
 
+        {/* Classes Section */}
+        <ThemedText style={styles.sectionHeader}>CLASSES</ThemedText>
+        <View style={styles.classesContainer}>
+          {[
+            {
+              level: '01',
+              title: '기초요리반',
+              en: 'Foundation',
+              desc: '기초 원리부터 배우는 소수정예 셰프 직강. 주 1회, 12주 과정.',
+              color: '#CAA876',
+            },
+            {
+              level: '02',
+              title: '중급·전문반',
+              en: 'World Cuisine',
+              desc: '이탈리안·프렌치·아시안 등 세계 요리 집중 심화 과정.',
+              color: '#4A90D9',
+            },
+            {
+              level: '03',
+              title: '대회 출전반',
+              en: 'Competition',
+              desc: '기능경기대회·국제대회 출전을 목표로 하는 전문 훈련 과정.',
+              color: '#E05C5C',
+            },
+          ].map((cls) => (
+            <TouchableOpacity
+              key={cls.level}
+              onPress={() => Linking.openURL('https://espritchefs.com')}
+              style={[styles.classCard, { borderColor }]}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.classLevelBadge, { backgroundColor: cls.color + '22', borderColor: cls.color + '55' }]}>
+                <ThemedText style={[styles.classLevelText, { color: cls.color }]}>{cls.level}</ThemedText>
+              </View>
+              <View style={styles.classCardBody}>
+                <ThemedText style={[styles.classTitle, { color: cls.color }]}>{cls.title}</ThemedText>
+                <ThemedText style={styles.classEn}>{cls.en}</ThemedText>
+                <ThemedText style={styles.classDesc}>{cls.desc}</ThemedText>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Kakao Consultation Button */}
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://pf.kakao.com/_BxeTqj/chat')}
+          style={styles.kakaoButton}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.kakaoButtonText}>카카오톡으로 상담하기</ThemedText>
+        </TouchableOpacity>
+
+        <View style={[styles.divider, { borderBottomColor: borderColor, marginTop: 40 }]} />
+
         <ThemedText style={styles.sectionHeader}>{t('vault_record')}</ThemedText>
 
         <View style={styles.categoryRow}>
@@ -97,12 +158,12 @@ export default function HomeScreen() {
               onPress={() => setSelectedCategory(cat)}
               style={[
                 styles.categoryButton, 
-                selectedCategory === cat ? { borderBottomColor: '#D4AF37' } : { borderBottomColor: 'transparent'}
+                selectedCategory === cat ? { borderBottomColor: '#CAA876' } : { borderBottomColor: 'transparent'}
               ]}
             >
               <ThemedText style={[
                 styles.categoryText, 
-                selectedCategory === cat ? { color: '#D4AF37', fontWeight: 'bold' } : { opacity: 0.5 }
+                selectedCategory === cat ? { color: '#CAA876', fontWeight: 'bold' } : { opacity: 0.5 }
               ]}>
                 {t(`category_${cat.toLowerCase()}`)}
               </ThemedText>
@@ -110,28 +171,81 @@ export default function HomeScreen() {
           ))}
         </View>
 
+        {/* Foundation 전용 A/B 코스 서브탭 */}
+        {selectedCategory === 'Foundation' && (
+          <View style={styles.courseRow}>
+            {(['A코스', 'B코스'] as const).map((course) => (
+              <Pressable
+                key={course}
+                onPress={() => setSelectedCourse(course)}
+                style={[styles.courseButton, selectedCourse === course && styles.courseButtonActive]}
+              >
+                <ThemedText style={[styles.courseText, selectedCourse === course && styles.courseTextActive]}>
+                  {course === 'A코스' ? 'A  건열조리' : 'B  습열조리'}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Intermediate 전용 Cuisine 서브탭 */}
+        {selectedCategory === 'Intermediate' && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.cuisineScroll}
+            contentContainerStyle={styles.cuisineScrollContent}
+          >
+            {CUISINES.map((cuisine) => (
+              <Pressable
+                key={cuisine}
+                onPress={() => setSelectedCuisine(cuisine)}
+                style={[styles.cuisineButton, selectedCuisine === cuisine && styles.cuisineButtonActive]}
+              >
+                <ThemedText style={[styles.cuisineText, selectedCuisine === cuisine && styles.cuisineTextActive]}>
+                  {cuisine}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+
         {isLoading ? (
           <View style={styles.loadingContainer}>
-             <ActivityIndicator size="large" color={textColor} />
-             <ThemedText style={styles.loadingText}>{t('preparing_ingredients')}</ThemedText>
+            <ActivityIndicator size="large" color={textColor} />
+            <ThemedText style={styles.loadingText}>{t('preparing_ingredients')}</ThemedText>
           </View>
-        ) : recipes.filter(r => r.category === selectedCategory || (selectedCategory === 'Foundation' && !r.category)).length === 0 ? (
-          <View style={styles.loadingContainer}>
-             <ThemedText type="subtitle">{t('empty_vault')}</ThemedText>
-             <ThemedText style={{ opacity: 0.5, marginTop: 8 }}>{t('empty_vault_desc')}</ThemedText>
-          </View>
-        ) : (
-          recipes.filter(r => r.category === selectedCategory || (selectedCategory === 'Foundation' && !r.category)).map((recipe) => (
-              <RecipeCard
-              key={recipe.id}
-              id={recipe.id.toString()}
-              title={recipe.title_en || recipe.title_ko}
-              description={recipe.week || 'Special Entry'}
-              imageUrl={recipe.image_url}
-              isLocked={recipe.category === 'Competition Class'}
-            />
-          ))
-        )}
+        ) : (() => {
+          const filtered = recipes.filter(r => {
+            if (r.category !== selectedCategory) return false;
+            if (selectedCategory === 'Foundation') return r.cooking_method === selectedCourse;
+            if (selectedCategory === 'Intermediate') return r.cuisine === selectedCuisine;
+            return true;
+          });
+          if (filtered.length === 0) {
+            return (
+              <View style={styles.loadingContainer}>
+                <ThemedText type="subtitle">{t('empty_vault')}</ThemedText>
+                <ThemedText style={{ opacity: 0.5, marginTop: 8 }}>{t('empty_vault_desc')}</ThemedText>
+              </View>
+            );
+          }
+          return (
+            <View style={styles.recipeList}>
+              {filtered.map((recipe, index) => (
+                <TouchableOpacity
+                  key={recipe.id}
+                  onPress={() => router.push(`/recipe/${recipe.id}`)}
+                  style={[styles.recipeRow, { borderBottomColor: borderColor }]}
+                  activeOpacity={0.6}
+                >
+                  <ThemedText style={styles.recipeTitle} numberOfLines={1}>{recipe.title_ko}</ThemedText>
+                  <ThemedText style={styles.recipeChevron}>›</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          );
+        })()}
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -142,9 +256,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
-    letterSpacing: 8,
+    letterSpacing: 10,
+    textAlign: 'center',
+    color: '#CAA876',       // gold-300
+    fontSize: 32,
+  },
+  headerSubtitle: {
+    letterSpacing: 4,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.4)',
     textAlign: 'center',
   },
   contentContainer: {
@@ -235,5 +358,161 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     opacity: 0.5,
+  },
+  classesContainer: {
+    gap: 12,
+    marginBottom: 28,
+    paddingHorizontal: 16,
+  },
+  classCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  classLevelBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  classLevelText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  classCardBody: {
+    flex: 1,
+    gap: 2,
+  },
+  classTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  classEn: {
+    fontSize: 9,
+    letterSpacing: 2,
+    opacity: 0.4,
+    textTransform: 'uppercase',
+  },
+  classDesc: {
+    fontSize: 12,
+    opacity: 0.55,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  courseRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 24,
+  },
+  courseButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(202,168,118,0.2)',
+    borderRadius: 2,
+  },
+  courseButtonActive: {
+    borderColor: '#CAA876',
+    backgroundColor: 'rgba(202,168,118,0.08)',
+  },
+  courseText: {
+    fontSize: 11,
+    letterSpacing: 2,
+    opacity: 0.4,
+  },
+  courseTextActive: {
+    color: '#CAA876',
+    opacity: 1,
+    fontWeight: '600',
+  },
+  cuisineScroll: {
+    marginBottom: 24,
+    marginHorizontal: -16,
+  },
+  cuisineScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  cuisineButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(202,168,118,0.2)',
+    borderRadius: 2,
+  },
+  cuisineButtonActive: {
+    borderColor: '#CAA876',
+    backgroundColor: 'rgba(202,168,118,0.08)',
+  },
+  cuisineText: {
+    fontSize: 11,
+    letterSpacing: 1.5,
+    opacity: 0.4,
+  },
+  cuisineTextActive: {
+    color: '#CAA876',
+    opacity: 1,
+    fontWeight: '600',
+  },
+  recipeList: {
+    width: '100%',
+  },
+  recipeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  recipeWeek: {
+    fontSize: 10,
+    letterSpacing: 1,
+    opacity: 0.4,
+    width: 32,
+    textAlign: 'right',
+    flexShrink: 0,
+  },
+  recipeIndex: {
+    fontSize: 10,
+    letterSpacing: 1,
+    opacity: 0.3,
+    width: 32,
+    textAlign: 'right',
+    flexShrink: 0,
+  },
+  recipeTitle: {
+    flex: 1,
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+  recipeChevron: {
+    fontSize: 18,
+    opacity: 0.3,
+    flexShrink: 0,
+  },
+  kakaoButton: {
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 2,
+    backgroundColor: '#CAA876',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kakaoButtonText: {
+    color: '#0A2342',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 });

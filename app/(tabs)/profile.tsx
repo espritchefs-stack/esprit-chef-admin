@@ -72,7 +72,10 @@ export default function GamifiedProfileScreen() {
       return;
     }
     
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -80,7 +83,7 @@ export default function GamifiedProfileScreen() {
         .select('*')
         .eq('id', session.user.id)
         .single();
-      
+
       if (error) throw error;
       setProfile(data);
     } catch (error) {
@@ -219,7 +222,7 @@ export default function GamifiedProfileScreen() {
           <View style={styles.profileInfo}>
             <ThemedText style={styles.username}>{profile?.username || 'Chef'}</ThemedText>
             {profile?.is_premium ? (
-              <View style={[styles.premiumBadge, { backgroundColor: '#D4AF37' }]}>
+              <View style={[styles.premiumBadge, { backgroundColor: '#CAA876' }]}>
                 <ThemedText style={styles.premiumBadgeText}>PREMIUM MEMBER</ThemedText>
               </View>
             ) : (
@@ -240,7 +243,7 @@ export default function GamifiedProfileScreen() {
             <ThemedText style={styles.progressText}>{nextTierName}</ThemedText>
           </View>
           <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(150,150,150,0.2)' }]}>
-            <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: '#D4AF37' }]} />
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: '#CAA876' }]} />
           </View>
         </View>
 
@@ -310,7 +313,7 @@ export default function GamifiedProfileScreen() {
                   <ThemedText style={styles.rewardName}>{item.name}</ThemedText>
                   <ThemedText style={styles.rewardDesc}>{item.desc}</ThemedText>
                 </View>
-                <ThemedText style={[styles.costText, { color: isAffordable ? '#D4AF37' : textColor }]}>
+                <ThemedText style={[styles.costText, { color: isAffordable ? '#CAA876' : textColor }]}>
                   {item.cost.toLocaleString()} pts
                 </ThemedText>
               </Pressable>
@@ -494,13 +497,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#D4AF37',
+    borderColor: '#CAA876',
     borderRadius: 4,
     alignSelf: 'flex-start',
   },
   upgradeBtnText: {
     fontSize: 10,
-    color: '#D4AF37',
+    color: '#CAA876',
     fontWeight: '700',
     letterSpacing: 1,
   },
@@ -520,7 +523,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#D4AF37', // Gold accent
+    color: '#CAA876', // Gold accent
     letterSpacing: 1,
   },
   progressBarTrack: {
@@ -582,7 +585,7 @@ const styles = StyleSheet.create({
   guidePoints: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#D4AF37',
+    color: '#CAA876',
   },
   rewardsSection: {
     gap: 16,
@@ -712,10 +715,10 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderWidth: 2,
-    borderColor: '#D4AF37', // Gold border
+    borderColor: '#CAA876', // Gold border
     backgroundColor: 'transparent',
     borderRadius: 16, // Softer edges for luxury feel
-    shadowColor: '#D4AF37',
+    shadowColor: '#CAA876',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
