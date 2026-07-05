@@ -8,21 +8,43 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as WebBrowser from 'expo-web-browser';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import Purchases from 'react-native-purchases';
 
-// recipe-pdfs 버킷은 private — pdf_url(구 public URL)에서 경로를 추출해 signed URL로 연다.
-// 열람 권한(RLS): profiles.is_premium 또는 is_admin. 권한 없으면 createSignedUrl이 실패한다.
-async function openRecipePdf(pdfUrl: string): Promise<'ok' | 'denied' | 'error'> {
+// recipe-pdfs 버킷은 private — pdf_url(구 public URL)에서 경로를 추출해 signed URL을 만든다.
+// 권한(RLS): profiles.is_premium 또는 is_admin. 권한 없으면 createSignedUrl이 실패한다.
+async function getSignedPdfUrl(pdfUrl: string): Promise<{ url?: string; status: 'ok' | 'denied' | 'error' }> {
   const marker = '/recipe-pdfs/';
   const idx = pdfUrl.indexOf(marker);
-  if (idx === -1) return 'error';
+  if (idx === -1) return { status: 'error' };
   const path = decodeURIComponent(pdfUrl.slice(idx + marker.length));
   const { data, error } = await supabase.storage.from('recipe-pdfs').createSignedUrl(path, 3600);
   if (error || !data?.signedUrl) {
-    return error?.message?.toLowerCase().includes('not found') ? 'error' : 'denied';
+    return { status: error?.message?.toLowerCase().includes('not found') ? 'error' : 'denied' };
   }
-  await WebBrowser.openBrowserAsync(data.signedUrl);
+  return { url: data.signedUrl, status: 'ok' };
+}
+
+async function openRecipePdf(pdfUrl: string): Promise<'ok' | 'denied' | 'error'> {
+  const { url, status } = await getSignedPdfUrl(pdfUrl);
+  if (status !== 'ok' || !url) return status;
+  await WebBrowser.openBrowserAsync(url);
   return 'ok';
+}
+
+// PDF를 기기에 내려받아 공유 시트(카톡·파일 저장 등)를 연다 — 자료 분실 대응
+async function saveAndSharePdf(pdfUrl: string, title: string): Promise<'ok' | 'denied' | 'error'> {
+  const { url, status } = await getSignedPdfUrl(pdfUrl);
+  if (status !== 'ok' || !url) return status;
+  const safeName = (title || 'recipe').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 60);
+  const fileUri = `${FileSystem.cacheDirectory}${safeName}.pdf`;
+  const { uri } = await FileSystem.downloadAsync(url, fileUri);
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${title} 레시피 PDF` });
+    return 'ok';
+  }
+  return 'error';
 }
 export default function RecipeDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -166,19 +188,41 @@ export default function RecipeDetailsScreen() {
       {recipe.pdf_url && (
         <View style={styles.pdfContainer}>
           {isPremium ? (
-            <Pressable 
-              style={[styles.pdfButton, { backgroundColor: '#CAA876' }]}
-              onPress={async () => {
-                const result = await openRecipePdf(recipe.pdf_url);
-                if (result === 'denied') {
-                  Alert.alert('열람 권한 없음', '프리미엄 구독 후 이용할 수 있습니다.');
-                } else if (result === 'error') {
-                  Alert.alert('오류', 'PDF를 찾을 수 없습니다. 잠시 후 다시 시도해주세요.');
-                }
-              }}
-            >
-              <ThemedText style={styles.pdfButtonText}>수업용 레시피 PDF 열람하기</ThemedText>
-            </Pressable>
+            <>
+              <Pressable
+                style={[styles.pdfButton, { backgroundColor: '#CAA876' }]}
+                onPress={async () => {
+                  const result = await openRecipePdf(recipe.pdf_url);
+                  if (result === 'denied') {
+                    Alert.alert('열람 권한 없음', '프리미엄 구독 후 이용할 수 있습니다.');
+                  } else if (result === 'error') {
+                    Alert.alert('오류', 'PDF를 찾을 수 없습니다. 잠시 후 다시 시도해주세요.');
+                  }
+                }}
+              >
+                <ThemedText style={styles.pdfButtonText}>수업용 레시피 PDF 열람하기</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.pdfButton, styles.pdfSaveButton]}
+                onPress={async () => {
+                  try {
+                    const result = await saveAndSharePdf(recipe.pdf_url, recipe.title_ko || recipe.title_en);
+                    if (result === 'denied') {
+                      Alert.alert('권한 없음', '프리미엄 구독 후 이용할 수 있습니다.');
+                    } else if (result === 'error') {
+                      Alert.alert('오류', 'PDF 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                    }
+                  } catch {
+                    Alert.alert('오류', 'PDF 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                  }
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <IconSymbol name="square.and.arrow.down" size={16} color="#CAA876" />
+                  <ThemedText style={[styles.pdfButtonText, { color: '#CAA876' }]}>기기에 저장 · 공유</ThemedText>
+                </View>
+              </Pressable>
+            </>
           ) : (
             <Pressable 
               style={[styles.pdfButton, { backgroundColor: '#0C1D36', borderColor: '#CAA876', borderWidth: 1 }]}
@@ -486,5 +530,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 2,
     color: '#000000',
+  },
+  pdfSaveButton: {
+    marginTop: 12,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(202,168,118,0.5)',
+    shadowOpacity: 0,
+    elevation: 0,
   }
 });

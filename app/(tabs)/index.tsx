@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/ctx/auth';
 
 export default function HomeScreen() {
   const backgroundColor = useThemeColor({}, 'background');
@@ -24,6 +25,39 @@ export default function HomeScreen() {
   const [selectedCuisine, setSelectedCuisine] = useState<Cuisine>('이탈리안');
   const { t } = useTranslation();
   const router = useRouter();
+  const { session } = useAuth();
+  const [myClass, setMyClass] = useState<{ cohort_label: string; nextLabel: string | null } | null>(null);
+
+  // 내 수업 카드: 최근 enrollment + 다가오는 회차
+  useEffect(() => {
+    async function fetchMyClass() {
+      if (!session?.user?.id) { setMyClass(null); return; }
+      const { data: enr } = await supabase
+        .from('enrollments')
+        .select('class_type, cohort_label')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const e = enr?.[0];
+      if (!e) { setMyClass(null); return; }
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: next } = await supabase
+        .from('class_sessions')
+        .select('session_date, week_label')
+        .eq('class_type', e.class_type)
+        .eq('cohort_label', e.cohort_label)
+        .gte('session_date', today)
+        .order('session_date', { ascending: true })
+        .limit(1);
+      const n = next?.[0];
+      setMyClass({
+        cohort_label: e.cohort_label,
+        nextLabel: n ? `다음 수업 ${n.session_date.slice(5).replace('-', '.')} · ${n.week_label ?? ''}` : null,
+      });
+    }
+    fetchMyClass();
+  }, [session]);
+
   useEffect(() => {
     async function fetchRecipes() {
       setIsLoading(true);
@@ -67,7 +101,32 @@ export default function HomeScreen() {
       }>
 
       <ThemedView style={styles.contentContainer}>
-        
+
+        {/* MY CLASS 카드 — 수강생 복습 허브 진입점 */}
+        <TouchableOpacity
+          onPress={() => router.push('/my-class')}
+          activeOpacity={0.8}
+          style={styles.myClassCard}
+        >
+          <View style={{ flex: 1 }}>
+            <ThemedText style={styles.myClassLabel}>MY CLASS</ThemedText>
+            {myClass ? (
+              <>
+                <ThemedText style={styles.myClassTitle}>{myClass.cohort_label}</ThemedText>
+                {myClass.nextLabel && (
+                  <ThemedText style={styles.myClassNext} numberOfLines={1}>{myClass.nextLabel}</ThemedText>
+                )}
+              </>
+            ) : (
+              <>
+                <ThemedText style={styles.myClassTitle}>수강생이신가요?</ThemedText>
+                <ThemedText style={styles.myClassNext}>가입 코드를 입력하면 내 수업 기록이 열립니다</ThemedText>
+              </>
+            )}
+          </View>
+          <ThemedText style={{ color: '#CAA876', fontSize: 22 }}>›</ThemedText>
+        </TouchableOpacity>
+
         {/* Dynamic Featured Signature Section */}
         <View style={styles.hofContainer}>
           <ThemedText style={styles.hofLabel}>ESPRIT SIGNATURE</ThemedText>
@@ -274,6 +333,33 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 40,
     minHeight: 300,
+  },
+  myClassCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(202,168,118,0.45)',
+    backgroundColor: 'rgba(202,168,118,0.07)',
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 36,
+  },
+  myClassLabel: {
+    fontSize: 9,
+    letterSpacing: 3,
+    color: '#CAA876',
+    marginBottom: 6,
+  },
+  myClassTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  myClassNext: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 4,
   },
   hofContainer: {
     marginBottom: 40,

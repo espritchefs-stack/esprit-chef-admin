@@ -290,6 +290,12 @@ export default function AdminUploadPage() {
           Esprit Admin Web
         </h1>
         <div className="flex items-center gap-3">
+          <a
+            href="/session"
+            className="text-xs uppercase tracking-widest text-white bg-[#D4AF37] hover:bg-[#C5A028] font-semibold px-4 py-1.5 rounded-full transition-colors"
+          >
+            📸 오늘 수업
+          </a>
           <div className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold border border-[#D4AF37] px-3 py-1 rounded-full">
             Chef Portal
           </div>
