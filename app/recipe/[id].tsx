@@ -98,7 +98,7 @@ export default function RecipeDetailsScreen() {
     return (
       <View style={[styles.loadingContainer, { backgroundColor }]}>
         <ActivityIndicator size="large" color={textColor} />
-        <ThemedText style={styles.loadingText}>LOADING RECIPE...</ThemedText>
+        <ThemedText style={styles.loadingText}>{t('loading_recipe')}</ThemedText>
       </View>
     );
   }
@@ -169,11 +169,13 @@ export default function RecipeDetailsScreen() {
       <View style={styles.header}>
         {recipe.week && <ThemedText style={styles.weekText}>{recipe.week}</ThemedText>}
         <ThemedText type="title" style={styles.titleEn}>
-          {recipe.title_en}
-        </ThemedText>
-        <ThemedText type="subtitle" style={styles.titleKo}>
           {recipe.title_ko}
         </ThemedText>
+        {recipe.title_en && recipe.title_en !== recipe.title_ko && (
+          <ThemedText type="subtitle" style={styles.titleKo}>
+            {recipe.title_en}
+          </ThemedText>
+        )}
       </View>
 
       <View style={[styles.imageContainer, { borderColor }]}>

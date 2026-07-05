@@ -20,9 +20,16 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Foundation');
   const [selectedCourse, setSelectedCourse] = useState<'A코스' | 'B코스'>('A코스');
-  const CUISINES = ['이탈리안', '프렌치', '한식·일식', '아시안', '아메리칸', '유러피안'] as const;
-  type Cuisine = typeof CUISINES[number];
-  const [selectedCuisine, setSelectedCuisine] = useState<Cuisine>('이탈리안');
+  // 퀴진 서브탭은 데이터에서 동적 생성 (중급·전문 공용, 많은 순 정렬)
+  const [selectedCuisine, setSelectedCuisine] = useState('');
+  const cuisinesFor = (cat: string) => {
+    const counts: Record<string, number> = {};
+    recipes.forEach(r => { if (r.category === cat && r.cuisine) counts[r.cuisine] = (counts[r.cuisine] || 0) + 1; });
+    return Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  };
+  const cuisineTabs = (selectedCategory === 'Intermediate' || selectedCategory === 'Professional')
+    ? cuisinesFor(selectedCategory) : [];
+  const activeCuisine = selectedCuisine && cuisineTabs.includes(selectedCuisine) ? selectedCuisine : cuisineTabs[0];
   const { t } = useTranslation();
   const router = useRouter();
   const { session } = useAuth();
@@ -98,7 +105,7 @@ export default function HomeScreen() {
       headerImage={
         <View style={styles.headerContainer}>
           <ThemedText type="title" style={styles.headerTitle}>ESPRIT</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>CHEF · COOKING ACADEMY</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>{t('header_subtitle')}</ThemedText>
         </View>
       }>
 
@@ -111,7 +118,7 @@ export default function HomeScreen() {
           style={styles.myClassCard}
         >
           <View style={{ flex: 1 }}>
-            <ThemedText style={styles.myClassLabel}>MY CLASS</ThemedText>
+            <ThemedText style={styles.myClassLabel}>{t('my_class_label')}</ThemedText>
             {myClass ? (
               <>
                 <ThemedText style={styles.myClassTitle}>{myClass.cohort_label}</ThemedText>
@@ -131,7 +138,7 @@ export default function HomeScreen() {
 
         {/* Dynamic Featured Signature Section */}
         <View style={styles.hofContainer}>
-          <ThemedText style={styles.hofLabel}>ESPRIT SIGNATURE</ThemedText>
+          <ThemedText style={styles.hofLabel}>{t('signature_label')}</ThemedText>
           <View style={[styles.hofCard, { borderColor }]}>
             {featuredRecipe ? (
               <>
@@ -141,13 +148,13 @@ export default function HomeScreen() {
                   contentFit="cover" 
                 />
                 <View style={styles.hofOverlay}>
-                  <ThemedText style={styles.hofDishLabel}>{featuredRecipe.title_en || featuredRecipe.title_ko}</ThemedText>
+                  <ThemedText style={styles.hofDishLabel}>{featuredRecipe.title_ko || featuredRecipe.title_en}</ThemedText>
                   <ThemedText style={styles.hofUserLabel}>{featuredRecipe.category || 'Featured Collection'}</ThemedText>
                 </View>
               </>
             ) : (
               <View style={[styles.hofImage, { backgroundColor: 'rgba(150,150,150,0.1)', justifyContent: 'center', alignItems: 'center' }]}>
-                <ThemedText style={{ opacity: 0.5, letterSpacing: 2 }}>NOTHING FEATURED YET</ThemedText>
+                <ThemedText style={{ opacity: 0.5, letterSpacing: 2 }}>{t('nothing_featured')}</ThemedText>
               </View>
             )}
           </View>
@@ -156,7 +163,7 @@ export default function HomeScreen() {
         <View style={[styles.divider, { borderBottomColor: borderColor }]} />
 
         {/* Classes Section */}
-        <ThemedText style={styles.sectionHeader}>CLASSES</ThemedText>
+        <ThemedText style={styles.sectionHeader}>{t('classes_label')}</ThemedText>
         <View style={styles.classesContainer}>
           {[
             {
@@ -205,7 +212,7 @@ export default function HomeScreen() {
           style={styles.kakaoButton}
           activeOpacity={0.85}
         >
-          <ThemedText style={styles.kakaoButtonText}>카카오톡으로 상담하기</ThemedText>
+          <ThemedText style={styles.kakaoButtonText}>{t('kakao_consult')}</ThemedText>
         </TouchableOpacity>
 
         <View style={[styles.divider, { borderBottomColor: borderColor, marginTop: 40 }]} />
@@ -218,7 +225,7 @@ export default function HomeScreen() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder={`레시피 검색 (전체 ${recipes.length}개)`}
+            placeholder={t('search_recipes', { count: recipes.length })}
             placeholderTextColor="rgba(150,150,150,0.5)"
             style={[styles.searchInput, { color: textColor }]}
           />
@@ -239,7 +246,7 @@ export default function HomeScreen() {
             if (matched.length === 0) {
               return (
                 <View style={styles.loadingContainer}>
-                  <ThemedText style={{ opacity: 0.5 }}>"{searchQuery}" 검색 결과가 없습니다</ThemedText>
+                  <ThemedText style={{ opacity: 0.5 }}>{t('no_results', { query: searchQuery })}</ThemedText>
                 </View>
               );
             }
@@ -308,21 +315,21 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Intermediate 전용 Cuisine 서브탭 */}
-        {selectedCategory === 'Intermediate' && (
+        {/* 중급·전문 공용 Cuisine 서브탭 (데이터 기반 동적 생성) */}
+        {cuisineTabs.length > 1 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.cuisineScroll}
             contentContainerStyle={styles.cuisineScrollContent}
           >
-            {CUISINES.map((cuisine) => (
+            {cuisineTabs.map((cuisine) => (
               <Pressable
                 key={cuisine}
                 onPress={() => setSelectedCuisine(cuisine)}
-                style={[styles.cuisineButton, selectedCuisine === cuisine && styles.cuisineButtonActive]}
+                style={[styles.cuisineButton, activeCuisine === cuisine && styles.cuisineButtonActive]}
               >
-                <ThemedText style={[styles.cuisineText, selectedCuisine === cuisine && styles.cuisineTextActive]}>
+                <ThemedText style={[styles.cuisineText, activeCuisine === cuisine && styles.cuisineTextActive]}>
                   {cuisine}
                 </ThemedText>
               </Pressable>
@@ -339,7 +346,7 @@ export default function HomeScreen() {
           const filtered = recipes.filter(r => {
             if (r.category !== selectedCategory) return false;
             if (selectedCategory === 'Foundation') return r.cooking_method === selectedCourse;
-            if (selectedCategory === 'Intermediate') return r.cuisine === selectedCuisine;
+            if (cuisineTabs.length > 1) return r.cuisine === activeCuisine;
             return true;
           });
           if (filtered.length === 0) {
@@ -383,7 +390,7 @@ export default function HomeScreen() {
               {filtered.length > 6 && (
                 <Pressable onPress={() => setShowAllList(v => !v)} style={[styles.showAllButton, { borderColor }]}>
                   <ThemedText style={styles.showAllText}>
-                    {showAllList ? '접기 ∧' : `전체 ${filtered.length}개 보기 ∨`}
+                    {showAllList ? t('collapse') : t('show_all', { count: filtered.length })}
                   </ThemedText>
                 </Pressable>
               )}

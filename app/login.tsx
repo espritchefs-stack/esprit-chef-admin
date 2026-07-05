@@ -121,7 +121,7 @@ export default function LoginScreen() {
 
         {/* 이메일 로그인 섹션 */}
         <View style={styles.section}>
-          <ThemedText style={[styles.sectionTitle, { color: PLACEHOLDER }]}>MEMBER LOGIN</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: PLACEHOLDER }]}>{t('member_login')}</ThemedText>
           <TextInput
             placeholder="Email Address"
             placeholderTextColor={PLACEHOLDER}
@@ -150,7 +150,7 @@ export default function LoginScreen() {
               ]}
             >
               <ThemedText style={[styles.buttonText, { color: '#0A2342' }]}>
-                {loading ? '···' : 'SIGN IN'}
+                {loading ? '···' : t('sign_in')}
               </ThemedText>
             </Pressable>
 
@@ -165,7 +165,7 @@ export default function LoginScreen() {
               ]}
             >
               <ThemedText style={[styles.buttonText, { color: GOLD }]}>
-                {loading ? '···' : 'SIGN UP'}
+                {loading ? '···' : t('sign_up')}
               </ThemedText>
             </Pressable>
           </View>
@@ -182,7 +182,7 @@ export default function LoginScreen() {
           >
             <IconSymbol name="globe" size={16} color={PLACEHOLDER} style={{ marginRight: 8 }} />
             <ThemedText style={[styles.googleButtonText, { color: PLACEHOLDER }]}>
-              CONTINUE WITH GOOGLE
+              {t('google_continue')}
             </ThemedText>
           </Pressable>
         </View>
@@ -196,7 +196,7 @@ export default function LoginScreen() {
 
         {/* 오프라인 수강생 코드 입력 */}
         <View style={styles.section}>
-          <ThemedText style={[styles.sectionTitle, { color: PLACEHOLDER }]}>OFFLINE STUDENT ACCESS</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: PLACEHOLDER }]}>{t('offline_access')}</ThemedText>
           <TextInput
             placeholder={t('secret_code_placeholder')}
             placeholderTextColor={PLACEHOLDER}

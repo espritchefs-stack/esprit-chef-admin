@@ -152,10 +152,10 @@ export default function MyClassScreen() {
     >
       <Pressable onPress={() => router.back()} style={styles.backButton}>
         <IconSymbol name="chevron.left" size={20} color={textColor} />
-        <ThemedText style={styles.backText}>BACK</ThemedText>
+        <ThemedText style={styles.backText}>뒤로</ThemedText>
       </Pressable>
 
-      <ThemedText style={styles.pageLabel}>MY CLASS</ThemedText>
+      <ThemedText style={styles.pageLabel}>수강생 전용</ThemedText>
       <ThemedText type="title" style={styles.pageTitle}>내 수업</ThemedText>
 
       {isLoading ? (
@@ -213,7 +213,7 @@ export default function MyClassScreen() {
 
                     {s.note ? (
                       <View style={styles.noteBox}>
-                        <ThemedText style={styles.noteLabel}>CHEF'S NOTE</ThemedText>
+                        <ThemedText style={styles.noteLabel}>셰프 노트</ThemedText>
                         <ThemedText style={styles.noteText}>{s.note}</ThemedText>
                       </View>
                     ) : null}
