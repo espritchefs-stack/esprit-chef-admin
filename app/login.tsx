@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useTranslation } from 'react-i18next';
+import { Image } from 'expo-image';
 
 export default function LoginScreen() {
   const { t, i18n } = useTranslation();
@@ -97,6 +98,13 @@ export default function LoginScreen() {
   return (
     <View style={[styles.container, { backgroundColor: BG }]}>
       <StatusBar barStyle="light-content" backgroundColor={BG} />
+      {/* 시네마틱 히어로 배경 (다크 오버레이로 가독성 유지) */}
+      <Image
+        source={require('@/assets/images/login-hero.jpg')}
+        style={styles.heroBg}
+        contentFit="cover"
+      />
+      <View style={styles.heroOverlay} />
       {/* 언어 토글 */}
       <Pressable onPress={toggleLanguage} style={styles.languageToggle}>
         <ThemedText style={[styles.languageToggleText, { color: PLACEHOLDER }]}>
@@ -216,6 +224,14 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  heroBg: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.5,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10,35,66,0.55)',
+  },
   container: {
     flex: 1,
     padding: 24,

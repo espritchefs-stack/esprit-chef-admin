@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { StyleSheet, View, ActivityIndicator, Pressable, Linking, TouchableOpacity, FlatList, ScrollView } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Pressable, Linking, TouchableOpacity, FlatList, ScrollView, TextInput } from 'react-native';
 
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
@@ -26,6 +26,8 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { session } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllList, setShowAllList] = useState(false);
   const [myClass, setMyClass] = useState<{ cohort_label: string; nextLabel: string | null } | null>(null);
 
   // 내 수업 카드: 최근 enrollment + 다가오는 회차
@@ -210,6 +212,65 @@ export default function HomeScreen() {
 
         <ThemedText style={styles.sectionHeader}>{t('vault_record')}</ThemedText>
 
+        {/* 레시피 검색 — 전체 카테고리 대상 */}
+        <View style={styles.searchBox}>
+          <ThemedText style={{ opacity: 0.4, fontSize: 14 }}>⌕</ThemedText>
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={`레시피 검색 (전체 ${recipes.length}개)`}
+            placeholderTextColor="rgba(150,150,150,0.5)"
+            style={[styles.searchInput, { color: textColor }]}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery('')}>
+              <ThemedText style={{ opacity: 0.4, fontSize: 16 }}>✕</ThemedText>
+            </Pressable>
+          )}
+        </View>
+
+        {searchQuery.trim().length > 0 ? (
+          // 검색 결과 모드
+          (() => {
+            const q = searchQuery.trim().toLowerCase();
+            const matched = recipes.filter(r =>
+              (r.title_ko || '').toLowerCase().includes(q) || (r.title_en || '').toLowerCase().includes(q)
+            ).slice(0, 30);
+            if (matched.length === 0) {
+              return (
+                <View style={styles.loadingContainer}>
+                  <ThemedText style={{ opacity: 0.5 }}>"{searchQuery}" 검색 결과가 없습니다</ThemedText>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.recipeList}>
+                {matched.map(recipe => (
+                  <TouchableOpacity
+                    key={recipe.id}
+                    onPress={() => router.push(`/recipe/${recipe.id}`)}
+                    style={[styles.searchResultRow, { borderBottomColor: borderColor }]}
+                    activeOpacity={0.6}
+                  >
+                    <Image
+                      source={recipe.image_url ? { uri: recipe.image_url } : CATEGORY_COVERS[recipe.category] || CATEGORY_COVERS.Foundation}
+                      style={styles.searchThumb}
+                      contentFit="cover"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.recipeTitle} numberOfLines={1}>{recipe.title_ko}</ThemedText>
+                      <ThemedText style={styles.searchResultMeta}>
+                        {t(`category_${(recipe.category || '').toLowerCase()}`)}{recipe.week ? ` · ${recipe.week}` : ''}
+                      </ThemedText>
+                    </View>
+                    <ThemedText style={styles.recipeChevron}>›</ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            );
+          })()
+        ) : (
+        <>
         <View style={styles.categoryRow}>
           {['Foundation', 'Intermediate', 'Professional', 'Banchan'].map((cat) => (
             <Pressable 
@@ -289,26 +350,75 @@ export default function HomeScreen() {
               </View>
             );
           }
+          const top = filtered.slice(0, 6);
+          const cover = CATEGORY_COVERS[selectedCategory] || CATEGORY_COVERS.Foundation;
           return (
-            <View style={styles.recipeList}>
-              {filtered.map((recipe, index) => (
-                <TouchableOpacity
-                  key={recipe.id}
-                  onPress={() => router.push(`/recipe/${recipe.id}`)}
-                  style={[styles.recipeRow, { borderBottomColor: borderColor }]}
-                  activeOpacity={0.6}
-                >
-                  <ThemedText style={styles.recipeTitle} numberOfLines={1}>{recipe.title_ko}</ThemedText>
-                  <ThemedText style={styles.recipeChevron}>›</ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <>
+              {/* 상위 6개 — 이미지 카드 레일 */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRail}>
+                {top.map((recipe) => (
+                  <TouchableOpacity
+                    key={recipe.id}
+                    onPress={() => router.push(`/recipe/${recipe.id}`)}
+                    style={styles.recipeCard}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={recipe.image_url ? { uri: recipe.image_url } : cover}
+                      style={styles.recipeCardImage}
+                      contentFit="cover"
+                      transition={400}
+                    />
+                    <View style={styles.recipeCardOverlay}>
+                      {recipe.week ? (
+                        <ThemedText style={styles.recipeCardWeek}>{recipe.week}</ThemedText>
+                      ) : null}
+                      <ThemedText style={styles.recipeCardTitle} numberOfLines={2}>{recipe.title_ko}</ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* 나머지 — 전체 보기 토글 */}
+              {filtered.length > 6 && (
+                <Pressable onPress={() => setShowAllList(v => !v)} style={[styles.showAllButton, { borderColor }]}>
+                  <ThemedText style={styles.showAllText}>
+                    {showAllList ? '접기 ∧' : `전체 ${filtered.length}개 보기 ∨`}
+                  </ThemedText>
+                </Pressable>
+              )}
+              {showAllList && (
+                <View style={styles.recipeList}>
+                  {filtered.slice(6).map((recipe) => (
+                    <TouchableOpacity
+                      key={recipe.id}
+                      onPress={() => router.push(`/recipe/${recipe.id}`)}
+                      style={[styles.recipeRow, { borderBottomColor: borderColor }]}
+                      activeOpacity={0.6}
+                    >
+                      <ThemedText style={styles.recipeTitle} numberOfLines={1}>{recipe.title_ko}</ThemedText>
+                      <ThemedText style={styles.recipeChevron}>›</ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
           );
         })()}
+        </>
+        )}
       </ThemedView>
     </ParallaxScrollView>
   );
 }
+
+// 카테고리별 폴백 커버 (레시피에 실사가 없을 때) — AI 무드컷, 음식 완성컷 아님
+const CATEGORY_COVERS: Record<string, any> = {
+  Foundation: require('@/assets/images/covers/foundation.jpg'),
+  Intermediate: require('@/assets/images/covers/intermediate.jpg'),
+  Professional: require('@/assets/images/covers/professional.jpg'),
+  Banchan: require('@/assets/images/covers/banchan.jpg'),
+};
 
 const styles = StyleSheet.create({
   headerContainer: {
@@ -360,6 +470,82 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.6,
     marginTop: 4,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(150,150,150,0.25)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    marginBottom: 20,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+  },
+  searchResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  searchThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+  },
+  searchResultMeta: {
+    fontSize: 11,
+    opacity: 0.45,
+    marginTop: 2,
+  },
+  cardRail: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  recipeCard: {
+    width: 150,
+    height: 200,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(150,150,150,0.08)',
+  },
+  recipeCardImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  recipeCardOverlay: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0,
+    padding: 12,
+    backgroundColor: 'rgba(4,12,26,0.62)',
+  },
+  recipeCardWeek: {
+    fontSize: 9,
+    letterSpacing: 1.5,
+    color: '#CAA876',
+    marginBottom: 4,
+  },
+  recipeCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    color: '#FFFFFF',
+  },
+  showAllButton: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  showAllText: {
+    fontSize: 12,
+    letterSpacing: 1,
+    opacity: 0.7,
   },
   hofContainer: {
     marginBottom: 40,
