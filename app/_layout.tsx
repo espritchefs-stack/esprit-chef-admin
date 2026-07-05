@@ -7,7 +7,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/ctx/auth';
 import '@/lib/i18n';
-import '@/lib/i18n';
 // import { LogLevel, OneSignal } from 'react-native-onesignal';
 import { Platform } from 'react-native';
 import { setupPurchases } from '@/lib/purchases';

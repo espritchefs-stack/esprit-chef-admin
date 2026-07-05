@@ -179,11 +179,18 @@ export default function GamifiedProfileScreen() {
     setIsScannerVisible(true);
   };
 
-  const handleBarcodeScanned = ({ type, data }: { type: string; data: string }) => {
+  // 출석 코드는 app_settings.attendance_code에서 로드 — QR 갱신 시 앱 업데이트 불필요
+  const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
     setIsScannerVisible(false);
-    
-    if (data === 'ESPRIT_ATTEND_2026') {
+
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('attendance_code')
+      .eq('id', 'global')
+      .single();
+
+    if (settings?.attendance_code && data === settings.attendance_code) {
       Alert.alert(
         '출석 완료', 
         '에스프릿 셰프 스튜디오에 오신 것을 환영합니다! 오늘 수업도 화이팅하세요.'

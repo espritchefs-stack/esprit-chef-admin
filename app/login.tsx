@@ -68,8 +68,14 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSecretCodeLogin = () => {
-    if (secretCode === 'VIP123') { 
+  // 코드값은 app_settings.guest_code에서 로드 — 앱 업데이트 없이 변경 가능
+  const handleSecretCodeLogin = async () => {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('guest_code')
+      .eq('id', 'global')
+      .single();
+    if (data?.guest_code && secretCode === data.guest_code) {
       Alert.alert('Success', 'Offline student access granted.');
       signInAsGuest();
     } else {

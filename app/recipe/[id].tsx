@@ -8,8 +8,22 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as WebBrowser from 'expo-web-browser';
-import { openPolarCheckout } from '@/lib/polar';
 import Purchases from 'react-native-purchases';
+
+// recipe-pdfs 버킷은 private — pdf_url(구 public URL)에서 경로를 추출해 signed URL로 연다.
+// 열람 권한(RLS): profiles.is_premium 또는 is_admin. 권한 없으면 createSignedUrl이 실패한다.
+async function openRecipePdf(pdfUrl: string): Promise<'ok' | 'denied' | 'error'> {
+  const marker = '/recipe-pdfs/';
+  const idx = pdfUrl.indexOf(marker);
+  if (idx === -1) return 'error';
+  const path = decodeURIComponent(pdfUrl.slice(idx + marker.length));
+  const { data, error } = await supabase.storage.from('recipe-pdfs').createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) {
+    return error?.message?.toLowerCase().includes('not found') ? 'error' : 'denied';
+  }
+  await WebBrowser.openBrowserAsync(data.signedUrl);
+  return 'ok';
+}
 export default function RecipeDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -155,7 +169,12 @@ export default function RecipeDetailsScreen() {
             <Pressable 
               style={[styles.pdfButton, { backgroundColor: '#CAA876' }]}
               onPress={async () => {
-                await WebBrowser.openBrowserAsync(recipe.pdf_url);
+                const result = await openRecipePdf(recipe.pdf_url);
+                if (result === 'denied') {
+                  Alert.alert('열람 권한 없음', '프리미엄 구독 후 이용할 수 있습니다.');
+                } else if (result === 'error') {
+                  Alert.alert('오류', 'PDF를 찾을 수 없습니다. 잠시 후 다시 시도해주세요.');
+                }
               }}
             >
               <ThemedText style={styles.pdfButtonText}>수업용 레시피 PDF 열람하기</ThemedText>
